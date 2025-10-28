@@ -106,20 +106,20 @@ ots_version: string             # OTS specification version (e.g., "0.1.0")
 
 # Module metadata
 module_name: string              # Module name (e.g., "ecommerce_analytics")
-module_description: string      # Description of the module (optional)
+module_description: string       # Description of the module (optional)
 version: string                  # Optional: Module version (e.g., "1.0.0")
-tags: [string]                  # Optional: Tags for categorization (e.g., ["analytics", "fct"])
+tags: [string]                   # Optional: Tags for categorization (e.g., ["analytics", "fct"])
 target:
-  database: string              # Target database name
-  schema: string                # Target schema name
-  sql_dialect: string           # SQL dialect (e.g., "postgres", "bigquery", "snowflake", "spark", etc.)
-  connection_profile: string    # Optional: connection profile reference
+  database: string               # Target database name
+  schema: string                 # Target schema name
+  sql_dialect: string            # Optional: SQL dialect (e.g., "postgres", "bigquery", "snowflake", "spark", etc.)
+  connection_profile: string     # Optional: connection profile reference
 
 # Transformations
 transformations:                 # Array of transformation definitions
-  - transformation_id: string   # Fully qualified identifier (e.g., "analytics.my_first_table")
-    description: string          # Description of what the transformation does (optional)
-    sql_dialect: string         # Optional: SQL dialect of the transformation code (for translation to target dialect)
+  - transformation_id: string    # Fully qualified identifier (e.g., "analytics.my_first_table")
+    description: string          # Optional: Description of what the transformation does (optional)
+    sql_dialect: string          # Optional: SQL dialect of the transformation code (for translation to target dialect)
     
     # Transformation code as sqlglot expression
     sqlglot:
@@ -135,39 +135,39 @@ transformations:                 # Array of transformation definitions
     # Schema definition
     schema:
       columns:                   # Array of column definitions
-        - name: string          # Column name
-          datatype: string      # Data type ("number", "string", "date", etc.)
+        - name: string           # Column name
+          datatype: string       # Data type ("number", "string", "date", etc.)
           description: string    # Column description
-      partitioning: [string]    # Partition keys
-      indexes:                   # Array of index definitions
-        - name: string          # Index name (optional, auto-generated if not provided)
-          columns: [string]     # Columns to index
+      partitioning: [string]     # Optional: Partition keys
+      indexes:                   # Optional: Array of index definitions
+        - name: string           # Index name (optional, auto-generated if not provided)
+          columns: [string]      # Columns to index
     
     # Materialization strategy
     materialization:
-      type: string              # "table", "view", "incremental", "scd2"
+      type: string               # "table", "view", "incremental", "scd2"
       incremental_details:       # Required if type is "incremental"
-        strategy: string        # "delete_insert", "append", "merge"
+        strategy: string         # "delete_insert", "append", "merge"
         delete_condition: string # SQL condition for delete (delete_insert only)
         filter_condition: string # SQL condition for filtering data
-        merge_key: [string]     # Primary key columns for matching records (merge only)
+        merge_key: [string]      # Primary key columns for matching records (merge only)
         update_columns: [string] # (Optional) List of columns to be updated in merge strategy
       scd2_details:              # Optional if type is "scd2"
-        start_column: string    # Name of the start column (default: "valid_from")
-        end_column: string      # Name of the end column (default: "valid_to")
-        unique_key: [string]    # Array of columns that uniquely identify a record in SCD2 modeling (optional)
+        start_column: string     # Name of the start column (default: "valid_from")
+        end_column: string       # Name of the end column (default: "valid_to")
+        unique_key: [string]     # Array of columns that uniquely identify a record in SCD2 modeling (optional)
     
     # Tests: both column-level and table-level
     tests:
-      columns:                   # Column-level tests
-        column_name: [string]   # Tests for specific columns (e.g., "id": ["not_null", "unique"])
-      table: [string]            # Table-level tests (e.g., ["row_count_gt_0", "no_duplicates"])
+      columns:                   # Optional: Column-level tests
+        column_name: [string]    # Tests for specific columns (e.g., "id": ["not_null", "unique"])
+      table: [string]            # Optional: Table-level tests (e.g., ["row_count_gt_0", "no_duplicates"])
     
     # Metadata
     metadata:
       file_path: string          # Path to the source transformation file
-      owner: string              # Person or team responsible (optional)
-      tags: [string]             # Keywords for categorization (optional)
+      owner: string              # Optional: Person or team responsible (optional)
+      tags: [string]             # Optional: Keywords for categorization (optional)
 ```
 
 ## Simple Table Transformation
