@@ -29,12 +29,23 @@ An **Open Transformation Definition (OTD)** is a concrete instance of the Open T
 
 A transformation is a unit of data processing that takes one or more data sources as input and produces one data output. Transformations can be SQL queries, Python functions resulting in a sqlglot expression.
 
-#### OTS vs OTD
+### Open Transformation Specification Module
+
+An **Open Transformation Specification Module (OTS Module)** is a collection of related transformations that target the same database and schema. An OTS Module can contain one or more transformations, much like how an OpenAPI specification can contain multiple endpoints.
+
+Key characteristics of an OTS Module:
+- **Single target**: All transformations in a module target the same database and schema
+- **Logical grouping**: Related transformations are organized together
+- **Deployment unit**: The entire module can be deployed as a single unit
+- **Dependency management**: Transformations within a module can reference each other
+
+#### OTS vs OTD vs OTS Module
 
 - **Open Transformation Specification (OTS)**: The standard that defines the structure and rules
-- **Open Transformation Definition (OTD)**: A specific transformation file following the OTS format
+- **Open Transformation Definition (OTD)**: A specific transformation within a module
+- **Open Transformation Specification Module (OTS Module)**: A collection of related transformations targeting the same database and schema
 
-Think of it this way: OTS is like the blueprint, OTD is the house built from it.
+Think of it this way: OTS is like the blueprint, an OTS Module is the house (a complete set of transformations), and each OTD is a room within that house (an individual transformation).
 
 ## Components of an OTD
 
@@ -83,67 +94,79 @@ Metadata provides additional information about the transformation including:
 - **owner**: Person or team responsible for the transformation
 - **tags**: Keywords for categorization and discovery
 
-## Open Transformation Definition (OTD) Structure
+## OTS Module Structure
 
-An OTD is a YAML or JSON document that follows the Open Transformation Specification. Below is the complete structure:
+An OTS Module is a YAML or JSON document that can contain one or more transformations. Below is the complete structure:
 
-### Complete OTD Structure
+### Complete OTS Module Structure
 
 ```yaml
 # OTS version
 ots_version: string             # OTS specification version (e.g., "0.1.0")
 
-# Model identification
-model_id: string                # Fully qualified identifier (e.g., "my_schema.my_first_table")
-description: string             # Description of what the transformation does (optional)
+# Module metadata
+module_name: string              # Module name (e.g., "ecommerce_analytics")
+module_description: string      # Description of the module (optional)
+version: string                  # Optional: Module version (e.g., "1.0.0")
+tags: [string]                  # Optional: Tags for categorization (e.g., ["analytics", "fct"])
+target:
+  database: string              # Target database name
+  schema: string                # Target schema name
+  sql_dialect: string           # SQL dialect (e.g., "postgres", "bigquery", "snowflake", "spark", etc.)
+  connection_profile: string    # Optional: connection profile reference
 
-# Transformation code as sqlglot expression
-sqlglot:
-  sql_content: string           # The original SQL query
-  parsed_ast: string            # Parsed AST representation (optional)
-  qualified_sql: string         # SQL with fully qualified table names (schema.table)
-  sql_type: string              # Type of SQL operation ("select", "union", "insert", etc.)
-  tables: [string]              # List of input tables referenced
-  columns: [string]             # List of output columns
-  functions: [string]           # List of SQL functions used
-  aliases: [string]             # List of column aliases
-
-# Schema definition
-schema:
-  columns:                       # Array of column definitions
-    - name: string              # Column name
-      datatype: string          # Data type ("number", "string", "date", etc.)
-      description: string        # Column description
-  partitioning: [string]        # Partition keys
-  indexes:                       # Array of index definitions
-    - name: string              # Index name (optional, auto-generated if not provided)
-      columns: [string]         # Columns to index
-
-# Materialization strategy
-materialization:
-  type: string                  # "table", "view", "incremental", "scd2"
-  incremental_details:          # Required if type is "incremental"
-    strategy: string            # "delete_insert", "append", "merge"
-    delete_condition: string     # SQL condition for delete (delete_insert only)
-    filter_condition: string    # SQL condition for filtering data
-    merge_key: [string]         # Primary key columns for matching records (merge only)
-    update_columns: [string]    # (Optional) List of columns to be updated in merge strategy
-  scd2_details:                 # Optional if type is "scd2"
-    start_column: string        # Name of the start column (default: "valid_from")
-    end_column: string          # Name of the end column (default: "valid_to")
-    unique_key: [string]         # Array of columns that uniquely identify a record in SCD2 modeling (optional)
-
-# Tests: both column-level and table-level
-tests:
-  columns:                      # Column-level tests
-    column_name: [string]       # Tests for specific columns (e.g., "id": ["not_null", "unique"])
-  table: [string]               # Table-level tests (e.g., ["row_count_gt_0", "no_duplicates"])
-
-# Metadata
-metadata:
-  file_path: string             # Path to the source transformation file
-  owner: string                  # Person or team responsible (optional)
-  tags: [string]                # Keywords for categorization (optional)
+# Transformations
+transformations:                 # Array of transformation definitions
+  - model_id: string            # Fully qualified identifier (e.g., "analytics.my_first_table")
+    description: string          # Description of what the transformation does (optional)
+    
+    # Transformation code as sqlglot expression
+    sqlglot:
+      sql_content: string        # The original SQL query
+      parsed_ast: string         # Parsed AST representation (optional)
+      qualified_sql: string      # SQL with fully qualified table names (schema.table)
+      sql_type: string           # Type of SQL operation ("select", "union", "insert", etc.)
+      tables: [string]           # List of input tables referenced
+      columns: [string]          # List of output columns
+      functions: [string]        # List of SQL functions used
+      aliases: [string]          # List of column aliases
+    
+    # Schema definition
+    schema:
+      columns:                   # Array of column definitions
+        - name: string          # Column name
+          datatype: string      # Data type ("number", "string", "date", etc.)
+          description: string    # Column description
+      partitioning: [string]    # Partition keys
+      indexes:                   # Array of index definitions
+        - name: string          # Index name (optional, auto-generated if not provided)
+          columns: [string]     # Columns to index
+    
+    # Materialization strategy
+    materialization:
+      type: string              # "table", "view", "incremental", "scd2"
+      incremental_details:       # Required if type is "incremental"
+        strategy: string        # "delete_insert", "append", "merge"
+        delete_condition: string # SQL condition for delete (delete_insert only)
+        filter_condition: string # SQL condition for filtering data
+        merge_key: [string]     # Primary key columns for matching records (merge only)
+        update_columns: [string] # (Optional) List of columns to be updated in merge strategy
+      scd2_details:              # Optional if type is "scd2"
+        start_column: string    # Name of the start column (default: "valid_from")
+        end_column: string      # Name of the end column (default: "valid_to")
+        unique_key: [string]    # Array of columns that uniquely identify a record in SCD2 modeling (optional)
+    
+    # Tests: both column-level and table-level
+    tests:
+      columns:                   # Column-level tests
+        column_name: [string]   # Tests for specific columns (e.g., "id": ["not_null", "unique"])
+      table: [string]            # Table-level tests (e.g., ["row_count_gt_0", "no_duplicates"])
+    
+    # Metadata
+    metadata:
+      file_path: string          # Path to the source transformation file
+      owner: string              # Person or team responsible (optional)
+      tags: [string]             # Keywords for categorization (optional)
 ```
 
 ## Simple Table Transformation
@@ -154,74 +177,80 @@ metadata:
 ```json
 {
   "ots_version": "0.1.0",
-  "model_id": "my_schema.customers",
-  "description": "Customer data table",
-  
-  "sqlglot": {
-    "sql_content": "SELECT id, name, email, created_at FROM source.customers WHERE active = true",
-    "parsed_ast": "SELECT id, name, email, created_at FROM source.customers WHERE active = true",
-    "qualified_sql": "SELECT id, name, email, created_at FROM my_schema.source.customers WHERE active = true",
-    "sql_type": "select",
-    "tables": ["source.customers"],
-    "columns": ["id", "name", "email", "created_at", "active"],
-    "functions": [],
-    "aliases": []
+  "module_name": "analytics_customers",
+  "module_description": "Customer analytics transformations",
+  "target": {
+    "database": "warehouse",
+    "schema": "analytics",
+    "sql_dialect": "postgres"
   },
-  
-  "schema": {
-    "columns": [
-      {
-        "name": "id",
-        "datatype": "number",
-        "description": "Unique customer identifier"
+  "transformations": [
+    {
+      "model_id": "analytics.customers",
+      "description": "Customer data table",
+      "sqlglot": {
+        "sql_content": "SELECT id, name, email, created_at FROM source.customers WHERE active = true",
+        "parsed_ast": "SELECT id, name, email, created_at FROM source.customers WHERE active = true",
+        "qualified_sql": "SELECT id, name, email, created_at FROM warehouse.source.customers WHERE active = true",
+        "sql_type": "select",
+        "tables": ["source.customers"],
+        "columns": ["id", "name", "email", "created_at", "active"],
+        "functions": [],
+        "aliases": []
       },
-      {
-        "name": "name",
-        "datatype": "string",
-        "description": "Customer name"
+      "schema": {
+        "columns": [
+          {
+            "name": "id",
+            "datatype": "number",
+            "description": "Unique customer identifier"
+          },
+          {
+            "name": "name",
+            "datatype": "string",
+            "description": "Customer name"
+          },
+          {
+            "name": "email",
+            "datatype": "string",
+            "description": "Customer email address"
+          },
+          {
+            "name": "created_at",
+            "datatype": "date",
+            "description": "Customer creation date"
+          }
+        ],
+        "partitioning": [],
+        "indexes": [
+          {
+            "name": "idx_customers_id",
+            "columns": ["id"]
+          },
+          {
+            "name": "idx_customers_email",
+            "columns": ["email"]
+          }
+        ]
       },
-      {
-        "name": "email",
-        "datatype": "string",
-        "description": "Customer email address"
+      "materialization": {
+        "type": "table"
       },
-      {
-        "name": "created_at",
-        "datatype": "date",
-        "description": "Customer creation date"
+      "tests": {
+        "columns": {
+          "id": ["not_null", "unique"],
+          "email": ["not_null", "unique"],
+          "created_at": ["not_null"]
+        },
+        "table": ["row_count_gt_0"]
+      },
+      "metadata": {
+        "file_path": "/models/analytics/customers.sql",
+        "owner": "data-team",
+        "tags": ["customer", "core"]
       }
-    ],
-    "partitioning": [],
-    "indexes": [
-      {
-        "name": "idx_customers_id",
-        "columns": ["id"]
-      },
-      {
-        "name": "idx_customers_email",
-        "columns": ["email"]
-      }
-    ]
-  },
-  
-  "materialization": {
-    "type": "table"
-  },
-  
-  "tests": {
-    "columns": {
-      "id": ["not_null", "unique"],
-      "email": ["not_null", "unique"],
-      "created_at": ["not_null"]
-    },
-    "table": ["row_count_gt_0"]
-  },
-  
-  "metadata": {
-    "file_path": "/models/my_schema/customers.sql",
-    "owner": "data-team",
-    "tags": ["customer", "core"]
-  }
+    }
+  ]
 }
 ```
 
@@ -232,54 +261,62 @@ metadata:
 
 ```yaml
 ots_version: "0.1.0"
-model_id: "my_schema.customers"
-description: "Customer data table"
+module_name: "analytics_customers"
+module_description: "Customer analytics transformations"
+target:
+  database: "warehouse"
+  schema: "analytics"
+  sql_dialect: "postgres"
 
-sqlglot:
-  sql_content: "SELECT id, name, email, created_at FROM source.customers WHERE active = true"
-  parsed_ast: "SELECT id, name, email, created_at FROM source.customers WHERE active = true"
-  qualified_sql: "SELECT id, name, email, created_at FROM my_schema.source.customers WHERE active = true"
-  sql_type: "select"
-  tables: ["source.customers"]
-  columns: ["id", "name", "email", "created_at", "active"]
-  functions: []
-  aliases: []
-
-schema:
-  columns:
-    - name: "id"
-      datatype: "number"
-      description: "Unique customer identifier"
-    - name: "name"
-      datatype: "string"
-      description: "Customer name"
-    - name: "email"
-      datatype: "string"
-      description: "Customer email address"
-    - name: "created_at"
-      datatype: "date"
-      description: "Customer creation date"
-  partitioning: []
-  indexes:
-    - name: "idx_customers_id"
-      columns: ["id"]
-    - name: "idx_customers_email"
-      columns: ["email"]
-
-materialization:
-  type: "table"
-
-tests:
-  columns:
-    id: ["not_null", "unique"]
-    email: ["not_null", "unique"]
-    created_at: ["not_null"]
-  table: ["row_count_gt_0"]
-
-metadata:
-  file_path: "/models/my_schema/customers.sql"
-  owner: "data-team"
-  tags: ["customer", "core"]
+transformations:
+  - model_id: "analytics.customers"
+    description: "Customer data table"
+    
+    sqlglot:
+      sql_content: "SELECT id, name, email, created_at FROM source.customers WHERE active = true"
+      parsed_ast: "SELECT id, name, email, created_at FROM source.customers WHERE active = true"
+      qualified_sql: "SELECT id, name, email, created_at FROM warehouse.source.customers WHERE active = true"
+      sql_type: "select"
+      tables: ["source.customers"]
+      columns: ["id", "name", "email", "created_at", "active"]
+      functions: []
+      aliases: []
+    
+    schema:
+      columns:
+        - name: "id"
+          datatype: "number"
+          description: "Unique customer identifier"
+        - name: "name"
+          datatype: "string"
+          description: "Customer name"
+        - name: "email"
+          datatype: "string"
+          description: "Customer email address"
+        - name: "created_at"
+          datatype: "date"
+          description: "Customer creation date"
+      partitioning: []
+      indexes:
+        - name: "idx_customers_id"
+          columns: ["id"]
+        - name: "idx_customers_email"
+          columns: ["email"]
+    
+    materialization:
+      type: "table"
+    
+    tests:
+      columns:
+        id: ["not_null", "unique"]
+        email: ["not_null", "unique"]
+        created_at: ["not_null"]
+      table: ["row_count_gt_0"]
+    
+  metadata:
+      file_path: "/models/analytics/customers.sql"
+      owner: "data-team"
+      tags: ["customer", "core"]
 ```
 
 </details>
@@ -421,7 +458,7 @@ tests:
     order_date: ["not_null"]
   table: ["row_count_gt_0"]
 
-metadata:
+  metadata:
   file_path: "/models/analytics/recent_orders.sql"
   owner: "analytics-team"
   tags: ["orders", "incremental"]
@@ -710,7 +747,7 @@ tests:
     email: ["not_null"]
   table: ["row_count_gt_0", "no_duplicates"]
 
-metadata:
+  metadata:
   file_path: "/models/product/master_data.sql"
   owner: "product-team"
   tags: ["customers", "master-data"]
@@ -864,7 +901,7 @@ tests:
     valid_from: ["not_null"]
   table: ["row_count_gt_0"]
 
-metadata:
+  metadata:
   file_path: "/models/dim/products_scd2.sql"
   owner: "data-engineering"
   tags: ["products", "scd2", "dimension"]
