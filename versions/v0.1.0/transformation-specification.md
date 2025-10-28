@@ -117,8 +117,9 @@ target:
 
 # Transformations
 transformations:                 # Array of transformation definitions
-  - model_id: string            # Fully qualified identifier (e.g., "analytics.my_first_table")
+  - transformation_id: string   # Fully qualified identifier (e.g., "analytics.my_first_table")
     description: string          # Description of what the transformation does (optional)
+    sql_dialect: string         # Optional: SQL dialect of the transformation code (for translation to target dialect)
     
     # Transformation code as sqlglot expression
     sqlglot:
@@ -186,7 +187,7 @@ transformations:                 # Array of transformation definitions
   },
   "transformations": [
     {
-      "model_id": "analytics.customers",
+      "transformation_id": "analytics.customers",
       "description": "Customer data table",
       "sqlglot": {
         "sql_content": "SELECT id, name, email, created_at FROM source.customers WHERE active = true",
@@ -269,7 +270,7 @@ target:
   sql_dialect: "postgres"
 
 transformations:
-  - model_id: "analytics.customers"
+  - transformation_id: "analytics.customers"
     description: "Customer data table"
     
     sqlglot:
@@ -414,7 +415,7 @@ columns:
 
 ```yaml
 ots_version: "0.1.0"
-model_id: "analytics.recent_orders"
+transformation_id: "analytics.recent_orders"
 description: "Orders updated in the last 7 days"
 
 sqlglot:
@@ -472,7 +473,7 @@ tests:
 ```json
 {
   "ots_version": "0.1.0",
-  "model_id": "analytics.recent_orders",
+  "transformation_id": "analytics.recent_orders",
   "description": "Orders updated in the last 7 days",
   
   "sqlglot": {
@@ -555,7 +556,7 @@ tests:
 
 ```yaml
 ots_version: "0.1.0"
-model_id: "logs.event_stream"
+transformation_id: "logs.event_stream"
 description: "Append-only event log"
 
 sqlglot:
@@ -614,7 +615,7 @@ metadata:
 ```json
 {
   "ots_version": "0.1.0",
-  "model_id": "logs.event_stream",
+  "transformation_id": "logs.event_stream",
   "description": "Append-only event log",
   
   "sqlglot": {
@@ -700,7 +701,7 @@ metadata:
 
 ```yaml
 ots_version: "0.1.0"
-model_id: "product.master_data"
+transformation_id: "product.master_data"
 description: "Customer master data with upsert logic"
 
 sqlglot:
@@ -761,7 +762,7 @@ tests:
 ```json
 {
   "ots_version": "0.1.0",
-  "model_id": "product.master_data",
+  "transformation_id": "product.master_data",
   "description": "Customer master data with upsert logic",
   
   "sqlglot": {
@@ -849,7 +850,7 @@ tests:
 
 ```yaml
 ots_version: "0.1.0"
-model_id: "dim.products_scd2"
+transformation_id: "dim.products_scd2"
 description: "Product dimension with full history tracking"
 
 sqlglot:
@@ -915,7 +916,7 @@ tests:
 ```json
 {
   "ots_version": "0.1.0",
-  "model_id": "dim.products_scd2",
+  "transformation_id": "dim.products_scd2",
   "description": "Product dimension with full history tracking",
   
   "sqlglot": {
