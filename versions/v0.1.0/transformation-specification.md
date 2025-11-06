@@ -56,9 +56,13 @@ Transformations can be written in different languages (SQL, Python, PySpark, etc
 #### SQL Transformations
 
 For SQL transformations, the code is stored with the following structure:
-- `original_sql`: The original SQL query as written (typically a SELECT statement)
-- `resolved_sql`: SQL with fully qualified table names (schema.table) - preferred for execution
+- `original_sql`: The original SQL query as written (typically a SELECT statement). This preserves the original transformation code as authored.
+- `resolved_sql`: SQL with fully qualified table names (schema.table format). This is the preferred version for execution as it eliminates ambiguity in table references. Tools should use `resolved_sql` when executing transformations.
 - `source_tables`: List of input tables referenced in the query (required for dependency analysis)
+
+**When to use each:**
+- Use `original_sql` for: displaying the original code to users, version control, understanding the transformation logic
+- Use `resolved_sql` for: actual execution, dependency resolution, cross-database compatibility
 
 #### Non-SQL Transformations
 
@@ -91,7 +95,9 @@ Metadata provides additional information about the transformation including:
 
 **Tag Types:**
 - **tags** (dbt-style): Simple string tags used for filtering, categorization, and discovery. These are typically used for model selection and organization.
-- **object_tags** (database-style): Key-value pairs that are attached directly to database objects (tables, views) in databases that support object tagging (e.g., Snowflake). These are used for data governance, compliance, and metadata management.
+  - **Module-level tags**: Tags defined at the module level apply to all transformations in the module. They can be inherited by transformations or merged with transformation-specific tags.
+  - **Transformation-level tags**: Tags defined at the transformation level are specific to that transformation. They can be merged with module-level tags.
+- **object_tags** (database-style): Key-value pairs that are attached directly to database objects (tables, views) in databases that support object tagging (e.g., Snowflake). These are used for data governance, compliance, and metadata management. Unlike `tags`, `object_tags` are always transformation-specific and are not inherited from module level.
 
 ## OTS Module Structure
 
@@ -101,13 +107,13 @@ An OTS Module is a YAML or JSON document that can contain one or more transforma
 
 ```yaml
 # OTS version
-ots_version: string             # OTS specification version (e.g., "0.1.0")
+ots_version: string             # OTS specification version (e.g., "0.1.0") - indicates which version of the OTS standard this module follows
 
 # Module metadata
 module_name: string              # Module name (e.g., "ecommerce_analytics")
 module_description: string       # Description of the module (optional)
-version: string                  # Optional: Module version (e.g., "1.0.0")
-tags: [string]                   # Optional: Tags for categorization (e.g., ["analytics", "fct"])
+version: string                  # Optional: Module/package version (e.g., "1.0.0") - version of this specific module, independent of OTS version
+tags: [string]                   # Optional: Module-level tags for categorization (e.g., ["analytics", "fct"]). These can be inherited or merged with transformation-level tags.
 target:
   database: string               # Target database name
   schema: string                 # Target schema name
@@ -180,6 +186,7 @@ transformations:                 # Array of transformation definitions
   "ots_version": "0.1.0",
   "module_name": "analytics_customers",
   "module_description": "Customer analytics transformations",
+  "tags": ["analytics", "production"],
   "target": {
     "database": "warehouse",
     "schema": "analytics",
@@ -246,7 +253,11 @@ transformations:                 # Array of transformation definitions
       "metadata": {
         "file_path": "/models/analytics/customers.sql",
         "owner": "data-team",
-        "tags": ["customer", "core"]
+        "tags": ["customer", "core"],
+        "object_tags": {
+          "sensitivity_tag": "pii",
+          "classification": "internal"
+        }
       }
     }
   ]
@@ -262,6 +273,8 @@ transformations:                 # Array of transformation definitions
 ots_version: "0.1.0"
 module_name: "analytics_customers"
 module_description: "Customer analytics transformations"
+tags: ["analytics", "production"]
+
 target:
   database: "warehouse"
   schema: "analytics"
@@ -309,10 +322,13 @@ transformations:
         created_at: ["not_null"]
       table: ["row_count_gt_0"]
     
-  metadata:
+    metadata:
       file_path: "/models/analytics/customers.sql"
       owner: "data-team"
       tags: ["customer", "core"]
+      object_tags:
+        sensitivity_tag: "pii"
+        classification: "internal"
 ```
 
 </details>
