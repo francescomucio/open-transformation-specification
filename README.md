@@ -12,10 +12,6 @@ This repository contains the Markdown sources for all published Open Transformat
 
 - **Current Version**: [v0.1.0](versions/v0.1.0/transformation-specification.md)
 
-## See It in Action
-
-Examples and use cases will be added as the specification evolves.
-
 ## Tools and Libraries
 
 Tools and libraries for working with the Open Transformation Specification will be documented as they become available.
@@ -29,27 +25,3 @@ The current process for developing the Open Transformation Specification is desc
 ## Licensing
 
 See: [License](LICENSE) (Apache-2.0)
-
-## About
-
-The Open Transformation Specification Repository
-
-### Topics
-
-data-transformation, etl, data-pipeline, specification, open-source, data-engineering, workflow, standardization
-
-### Resources
-
-- [Contributing](CONTRIBUTING.md)
-
-### License
-
-Apache-2.0 license
-
-### Code of conduct
-
-[Code of conduct](CODE_OF_CONDUCT.md)
-
-### Contributing
-
-[Contributing](CONTRIBUTING.md)
