@@ -51,7 +51,7 @@ Think of it this way: OTS is like the blueprint, an OTS Module is the house (a c
 
 An Open Transformation Definition consists of several key components that work together to define an executable transformation:
 
-1. **Transformation Code**: The transformation logic as a sqlglot expression (for SQL transformations)
+1. **Transformation Code**: The transformation logic (SQL, Python, PySpark, etc.) stored in a type-based structure
 2. **Schema Definition**: The structure of the output data including column definitions, types, and validation rules
 3. **Materialization Strategy**: How the output is stored and updated (table, view, incremental, SCD2)
 4. **Tests**: Validation rules that ensure data quality at table level
@@ -59,16 +59,19 @@ An Open Transformation Definition consists of several key components that work t
 
 ### Transformation Code
 
-The transformation code is stored as a sqlglot expression. sqlglot provides a unified representation of SQL that can be parsed from various dialects (PostgreSQL, MySQL, BigQuery, Spark, etc.) and enables automatic dependency analysis, validation, and cross-database execution.
+Transformations can be written in different languages (SQL, Python, PySpark, etc.). The transformation code is stored in a type-based structure that supports multiple transformation types while maintaining a consistent interface.
 
-A sqlglot expression contains:
-- `sql_content`: The original SQL query
-- `qualified_sql`: SQL with fully qualified table names (schema.table)
-- `sql_type`: Type of SQL operation (select, union, insert, etc.)
-- `tables`: List of source tables referenced in the query
-- `columns`: List of output columns
-- `functions`: SQL functions used in the query
-- `aliases`: Column aliases defined in the query
+#### SQL Transformations
+
+For SQL transformations, the code is stored with the following structure:
+- `original_sql`: The original SQL query as written
+- `resolved_sql`: SQL with fully qualified table names (schema.table) - preferred for execution
+- `operation_type`: Type of SQL operation (select, union, insert, etc.) - optional
+- `source_tables`: List of input tables referenced in the query (required for dependency analysis)
+
+#### Non-SQL Transformations
+
+For non-SQL transformations (Python, PySpark, etc.), the code structure is type-specific. See the complete structure below for details.
 
 ### Schema Definition
 
@@ -119,18 +122,47 @@ target:
 transformations:                 # Array of transformation definitions
   - transformation_id: string    # Fully qualified identifier (e.g., "analytics.my_first_table")
     description: string          # Optional: Description of what the transformation does (optional)
+    transformation_type: string  # Type of transformation: "sql", "python", "pyspark", "r", "api", etc. (default: "sql")
     sql_dialect: string          # Optional: SQL dialect of the transformation code (for translation to target dialect)
     
-    # Transformation code as sqlglot expression
-    sqlglot:
-      sql_content: string        # The original SQL query
-      parsed_ast: string         # Parsed AST representation (optional)
-      qualified_sql: string      # SQL with fully qualified table names (schema.table)
-      sql_type: string           # Type of SQL operation ("select", "union", "insert", etc.)
-      tables: [string]           # List of input tables referenced
-      columns: [string]          # List of output columns
-      functions: [string]        # List of SQL functions used
-      aliases: [string]          # List of column aliases
+    # Transformation code (type-based structure)
+    code:
+      # For SQL transformations (transformation_type: "sql")
+      sql:
+        original_sql: string     # The original SQL query as written
+        resolved_sql: string     # SQL with fully qualified table names (schema.table) - preferred for execution
+        operation_type: string   # Optional: Type of SQL operation ("select", "union", "insert", etc.)
+        source_tables: [string] # List of input tables referenced (required for dependency analysis)
+      
+      # For Python transformations (transformation_type: "python")
+      python:
+        source_code: string      # Python code as string
+        entry_point: string      # Function name to execute (e.g., "transform")
+        dependencies: [string]  # Optional: Required Python packages
+        source_dataframes: [string] # Optional: Input DataFrame names
+        output_dataframe: string # Optional: Output DataFrame name
+      
+      # For PySpark transformations (transformation_type: "pyspark")
+      pyspark:
+        source_code: string      # PySpark code as string
+        entry_point: string      # Function name to execute
+        spark_config: dict      # Optional: Spark-specific configuration
+        source_tables: [string]  # Optional: Input table names
+      
+      # For R transformations (transformation_type: "r")
+      r:
+        source_code: string      # R code as string
+        entry_point: string      # Function name to execute
+        dependencies: [string]   # Optional: Required R packages
+        source_tables: [string] # Optional: Input table names
+      
+      # For API-based transformations (transformation_type: "api")
+      api:
+        endpoint: string         # API endpoint URL
+        method: string          # HTTP method ("GET", "POST", etc.)
+        request_body: dict       # Optional: Request body
+        response_format: string  # Response format ("json", "csv", etc.)
+        source_tables: [string]  # Optional: Input tables (if any)
     
     # Schema definition
     schema:
@@ -189,15 +221,14 @@ transformations:                 # Array of transformation definitions
     {
       "transformation_id": "analytics.customers",
       "description": "Customer data table",
-      "sqlglot": {
-        "sql_content": "SELECT id, name, email, created_at FROM source.customers WHERE active = true",
-        "parsed_ast": "SELECT id, name, email, created_at FROM source.customers WHERE active = true",
-        "qualified_sql": "SELECT id, name, email, created_at FROM warehouse.source.customers WHERE active = true",
-        "sql_type": "select",
-        "tables": ["source.customers"],
-        "columns": ["id", "name", "email", "created_at", "active"],
-        "functions": [],
-        "aliases": []
+      "transformation_type": "sql",
+      "code": {
+        "sql": {
+          "original_sql": "SELECT id, name, email, created_at FROM source.customers WHERE active = true",
+          "resolved_sql": "SELECT id, name, email, created_at FROM warehouse.source.customers WHERE active = true",
+          "operation_type": "select",
+          "source_tables": ["source.customers"]
+        }
       },
       "schema": {
         "columns": [
@@ -272,16 +303,14 @@ target:
 transformations:
   - transformation_id: "analytics.customers"
     description: "Customer data table"
+    transformation_type: "sql"
     
-    sqlglot:
-      sql_content: "SELECT id, name, email, created_at FROM source.customers WHERE active = true"
-      parsed_ast: "SELECT id, name, email, created_at FROM source.customers WHERE active = true"
-      qualified_sql: "SELECT id, name, email, created_at FROM warehouse.source.customers WHERE active = true"
-      sql_type: "select"
-      tables: ["source.customers"]
-      columns: ["id", "name", "email", "created_at", "active"]
-      functions: []
-      aliases: []
+    code:
+      sql:
+        original_sql: "SELECT id, name, email, created_at FROM source.customers WHERE active = true"
+        resolved_sql: "SELECT id, name, email, created_at FROM warehouse.source.customers WHERE active = true"
+        operation_type: "select"
+        source_tables: ["source.customers"]
     
     schema:
       columns:
@@ -418,11 +447,13 @@ ots_version: "0.1.0"
 transformation_id: "analytics.recent_orders"
 description: "Orders updated in the last 7 days"
 
-sqlglot:
-  sql_content: "SELECT order_id, customer_id, order_date, amount, status FROM source.orders WHERE updated_at >= '@start_date'"
-  sql_type: "select"
-  tables: ["source.orders"]
-  columns: ["order_id", "customer_id", "order_date", "amount", "status"]
+transformation_type: "sql"
+code:
+  sql:
+    original_sql: "SELECT order_id, customer_id, order_date, amount, status FROM source.orders WHERE updated_at >= '@start_date'"
+    resolved_sql: "SELECT order_id, customer_id, order_date, amount, status FROM warehouse.source.orders WHERE updated_at >= '@start_date'"
+    operation_type: "select"
+    source_tables: ["source.orders"]
 
 schema:
   columns:
@@ -476,13 +507,14 @@ tests:
   "transformation_id": "analytics.recent_orders",
   "description": "Orders updated in the last 7 days",
   
-  "sqlglot": {
-    "sql_content": "SELECT order_id, customer_id, order_date, amount, status FROM source.orders WHERE updated_at >= '@start_date'",
-    "sql_type": "select",
-    "tables": ["source.orders"],
-    "columns": ["order_id", "customer_id", "order_date", "amount", "status"],
-    "functions": [],
-    "aliases": []
+  "transformation_type": "sql",
+  "code": {
+    "sql": {
+      "original_sql": "SELECT order_id, customer_id, order_date, amount, status FROM source.orders WHERE updated_at >= '@start_date'",
+      "resolved_sql": "SELECT order_id, customer_id, order_date, amount, status FROM warehouse.source.orders WHERE updated_at >= '@start_date'",
+      "operation_type": "select",
+      "source_tables": ["source.orders"]
+    }
   },
   
   "schema": {
@@ -559,11 +591,13 @@ ots_version: "0.1.0"
 transformation_id: "logs.event_stream"
 description: "Append-only event log"
 
-sqlglot:
-  sql_content: "SELECT event_id, timestamp, user_id, event_type, payload FROM source.events WHERE timestamp >= '@start_date'"
-  sql_type: "select"
-  tables: ["source.events"]
-  columns: ["event_id", "timestamp", "user_id", "event_type", "payload"]
+transformation_type: "sql"
+code:
+  sql:
+    original_sql: "SELECT event_id, timestamp, user_id, event_type, payload FROM source.events WHERE timestamp >= '@start_date'"
+    resolved_sql: "SELECT event_id, timestamp, user_id, event_type, payload FROM warehouse.source.events WHERE timestamp >= '@start_date'"
+    operation_type: "select"
+    source_tables: ["source.events"]
 
 schema:
   columns:
@@ -618,13 +652,14 @@ metadata:
   "transformation_id": "logs.event_stream",
   "description": "Append-only event log",
   
-  "sqlglot": {
-    "sql_content": "SELECT event_id, timestamp, user_id, event_type, payload FROM source.events WHERE timestamp >= '@start_date'",
-    "sql_type": "select",
-    "tables": ["source.events"],
-    "columns": ["event_id", "timestamp", "user_id", "event_type", "payload"],
-    "functions": [],
-    "aliases": []
+  "transformation_type": "sql",
+  "code": {
+    "sql": {
+      "original_sql": "SELECT event_id, timestamp, user_id, event_type, payload FROM source.events WHERE timestamp >= '@start_date'",
+      "resolved_sql": "SELECT event_id, timestamp, user_id, event_type, payload FROM warehouse.source.events WHERE timestamp >= '@start_date'",
+      "operation_type": "select",
+      "source_tables": ["source.events"]
+    }
   },
   
   "schema": {
@@ -704,11 +739,13 @@ ots_version: "0.1.0"
 transformation_id: "product.master_data"
 description: "Customer master data with upsert logic"
 
-sqlglot:
-  sql_content: "SELECT customer_id, name, email, phone, updated_at FROM source.customers WHERE updated_at >= '@start_date'"
-  sql_type: "select"
-  tables: ["source.customers"]
-  columns: ["customer_id", "name", "email", "phone", "updated_at"]
+transformation_type: "sql"
+code:
+  sql:
+    original_sql: "SELECT customer_id, name, email, phone, updated_at FROM source.customers WHERE updated_at >= '@start_date'"
+    resolved_sql: "SELECT customer_id, name, email, phone, updated_at FROM warehouse.source.customers WHERE updated_at >= '@start_date'"
+    operation_type: "select"
+    source_tables: ["source.customers"]
 
 schema:
   columns:
@@ -765,13 +802,14 @@ tests:
   "transformation_id": "product.master_data",
   "description": "Customer master data with upsert logic",
   
-  "sqlglot": {
-    "sql_content": "SELECT customer_id, name, email, phone, updated_at FROM source.customers WHERE updated_at >= '@start_date'",
-    "sql_type": "select",
-    "tables": ["source.customers"],
-    "columns": ["customer_id", "name", "email", "phone", "updated_at"],
-    "functions": [],
-    "aliases": []
+  "transformation_type": "sql",
+  "code": {
+    "sql": {
+      "original_sql": "SELECT customer_id, name, email, phone, updated_at FROM source.customers WHERE updated_at >= '@start_date'",
+      "resolved_sql": "SELECT customer_id, name, email, phone, updated_at FROM warehouse.source.customers WHERE updated_at >= '@start_date'",
+      "operation_type": "select",
+      "source_tables": ["source.customers"]
+    }
   },
   
   "schema": {
@@ -853,11 +891,13 @@ ots_version: "0.1.0"
 transformation_id: "dim.products_scd2"
 description: "Product dimension with full history tracking"
 
-sqlglot:
-  sql_content: "SELECT product_id, product_name, price, category, updated_at FROM source.products WHERE updated_at >= '@start_date'"
-  sql_type: "select"
-  tables: ["source.products"]
-  columns: ["product_id", "product_name", "price", "category", "updated_at"]
+transformation_type: "sql"
+code:
+  sql:
+    original_sql: "SELECT product_id, product_name, price, category, updated_at FROM source.products WHERE updated_at >= '@start_date'"
+    resolved_sql: "SELECT product_id, product_name, price, category, updated_at FROM warehouse.source.products WHERE updated_at >= '@start_date'"
+    operation_type: "select"
+    source_tables: ["source.products"]
 
 schema:
   columns:
@@ -919,13 +959,14 @@ tests:
   "transformation_id": "dim.products_scd2",
   "description": "Product dimension with full history tracking",
   
-  "sqlglot": {
-    "sql_content": "SELECT product_id, product_name, price, category, updated_at FROM source.products WHERE updated_at >= '@start_date'",
-    "sql_type": "select",
-    "tables": ["source.products"],
-    "columns": ["product_id", "product_name", "price", "category", "updated_at"],
-    "functions": [],
-    "aliases": []
+  "transformation_type": "sql",
+  "code": {
+    "sql": {
+      "original_sql": "SELECT product_id, product_name, price, category, updated_at FROM source.products WHERE updated_at >= '@start_date'",
+      "resolved_sql": "SELECT product_id, product_name, price, category, updated_at FROM warehouse.source.products WHERE updated_at >= '@start_date'",
+      "operation_type": "select",
+      "source_tables": ["source.products"]
+    }
   },
   
   "schema": {
