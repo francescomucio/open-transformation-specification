@@ -8,17 +8,17 @@ This specification allows both humans and computers to discover and understand t
 
 ## Versions
 
-This repository contains the Markdown sources for all published Open Transformation Specification versions. For release notes and release candidate versions, refer to the [releases page](https://github.com/your-org/open-transformation-specification/releases).
+This repository contains the Markdown sources for all published Open Transformation Specification versions. For release notes and release candidate versions, refer to the [releases page](https://github.com/francescomucio/open-transformation-specification/releases).
 
 - **Current Version**: [v0.1.0](versions/v0.1.0/transformation-specification.md)
 
 ## See It in Action
 
-If you just want to see it work, check out the list of current [examples](examples/).
+Examples and use cases will be added as the specification evolves.
 
 ## Tools and Libraries
 
-Looking to see how you can create your own transformation specification, present it, or otherwise use it? Check out our growing [list of implementations](IMPLEMENTATIONS.md).
+Tools and libraries for working with the Open Transformation Specification will be documented as they become available.
 
 ## Participation
 
@@ -40,9 +40,6 @@ data-transformation, etl, data-pipeline, specification, open-source, data-engine
 
 ### Resources
 
-- [Documentation](docs/)
-- [Examples](examples/)
-- [Tools](tools/)
 - [Contributing](CONTRIBUTING.md)
 
 ### License

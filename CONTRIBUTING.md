@@ -40,8 +40,8 @@ When contributing to the specification:
 
 ## Getting Help
 
-- Check existing [issues](https://github.com/your-org/open-transformation-specification/issues)
-- Start a [discussion](https://github.com/your-org/open-transformation-specification/discussions)
+- Check existing [issues](https://github.com/francescomucio/open-transformation-specification/issues)
+- Start a [discussion](https://github.com/francescomucio/open-transformation-specification/discussions)
 - Review the [Code of Conduct](CODE_OF_CONDUCT.md)
 
 ## License
