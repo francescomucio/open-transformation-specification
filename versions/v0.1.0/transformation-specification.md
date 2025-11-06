@@ -3,11 +3,10 @@
 ## Table of Contents
 
 1. [Introduction](#introduction)
-2. [Specification Structure](#specification-structure)
-3. [Core Concepts](#core-concepts)
-4. [Open Transformation Definition (OTD) Structure](#open-transformation-definition-otd-structure)
-5. [Materialization Types](#materialization-types)
-6. [Examples](#examples)
+2. [Core Concepts](#core-concepts)
+3. [Open Transformation Definition (OTD) Structure](#open-transformation-definition-otd-structure)
+4. [Materialization Types](#materialization-types)
+5. [Examples](#examples)
 
 ## Introduction
 
@@ -15,19 +14,13 @@ The Open Transformation Specification (OTS) defines a standard, programming lang
 
 An OTS-based transformation must include both the code that transforms the data and metadata about the transformation. A tool implementing OTS should be able to execute an OTS transformation with no additional code or information beyond what's specified in the OTS document.
 
-## Specification Structure
-
-An Open Transformation Specification document describes a data transformation and is represented in YAML or JSON formats. These documents may be produced and served statically or generated dynamically from an application.
-
-The Open Transformation Specification does not require rewriting existing data transformations. It does not require binding any software to a transformation – the described transformation may not even be owned by the creator of its description. It does, however, require that the transformation's capabilities be described in the structure of the Open Transformation Specification.
-
 ## Core Concepts
 
 ### Open Transformation Definition (OTD)
 
 An **Open Transformation Definition (OTD)** is a concrete instance of the Open Transformation Specification - a single file or document that describes a specific data transformation using the OTS format. 
 
-A transformation is a unit of data processing that takes one or more data sources as input and produces one data output. Transformations can be SQL queries, Python functions resulting in a sqlglot expression.
+A transformation is a unit of data processing that takes one or more data sources as input and produces one data output. Right now, transformations are SQL queries, but we plan to add support for other programming languages in the future.
 
 ### Open Transformation Specification Module
 
@@ -37,7 +30,6 @@ Key characteristics of an OTS Module:
 - **Single target**: All transformations in a module target the same database and schema
 - **Logical grouping**: Related transformations are organized together
 - **Deployment unit**: The entire module can be deployed as a single unit
-- **Dependency management**: Transformations within a module can reference each other
 
 #### OTS vs OTD vs OTS Module
 
@@ -64,14 +56,13 @@ Transformations can be written in different languages (SQL, Python, PySpark, etc
 #### SQL Transformations
 
 For SQL transformations, the code is stored with the following structure:
-- `original_sql`: The original SQL query as written
+- `original_sql`: The original SQL query as written (typically a SELECT statement)
 - `resolved_sql`: SQL with fully qualified table names (schema.table) - preferred for execution
-- `operation_type`: Type of SQL operation (select, union, insert, etc.) - optional
 - `source_tables`: List of input tables referenced in the query (required for dependency analysis)
 
 #### Non-SQL Transformations
 
-For non-SQL transformations (Python, PySpark, etc.), the code structure is type-specific. See the complete structure below for details.
+Support for non-SQL transformation types (Python, PySpark, R, etc.) is planned for future versions of the specification. The current v0.1.0 specification focuses on SQL transformations.
 
 ### Schema Definition
 
@@ -95,7 +86,12 @@ Tests enable automated data quality validation without manual inspection.
 Metadata provides additional information about the transformation including:
 - **file_path**: Location of the source transformation file
 - **owner**: Person or team responsible for the transformation
-- **tags**: Keywords for categorization and discovery
+- **tags**: List of string tags for categorization and discovery (e.g., ["analytics", "fct", "production"])
+- **object_tags**: Dictionary of key-value pairs for database object tagging (e.g., {"sensitivity_tag": "pii", "classification": "public"})
+
+**Tag Types:**
+- **tags** (dbt-style): Simple string tags used for filtering, categorization, and discovery. These are typically used for model selection and organization.
+- **object_tags** (database-style): Key-value pairs that are attached directly to database objects (tables, views) in databases that support object tagging (e.g., Snowflake). These are used for data governance, compliance, and metadata management.
 
 ## OTS Module Structure
 
@@ -122,47 +118,18 @@ target:
 transformations:                 # Array of transformation definitions
   - transformation_id: string    # Fully qualified identifier (e.g., "analytics.my_first_table")
     description: string          # Optional: Description of what the transformation does (optional)
-    transformation_type: string  # Type of transformation: "sql", "python", "pyspark", "r", "api", etc. (default: "sql")
+    transformation_type: string  # Type of transformation: "sql" (default: "sql"). Non-SQL types (python, pyspark, r) are planned for future versions.
     sql_dialect: string          # Optional: SQL dialect of the transformation code (for translation to target dialect)
     
     # Transformation code (type-based structure)
     code:
       # For SQL transformations (transformation_type: "sql")
       sql:
-        original_sql: string     # The original SQL query as written
+        original_sql: string     # The original SQL query as written (typically a SELECT statement)
         resolved_sql: string     # SQL with fully qualified table names (schema.table) - preferred for execution
-        operation_type: string   # Optional: Type of SQL operation ("select", "union", "insert", etc.)
         source_tables: [string] # List of input tables referenced (required for dependency analysis)
       
-      # For Python transformations (transformation_type: "python")
-      python:
-        source_code: string      # Python code as string
-        entry_point: string      # Function name to execute (e.g., "transform")
-        dependencies: [string]  # Optional: Required Python packages
-        source_dataframes: [string] # Optional: Input DataFrame names
-        output_dataframe: string # Optional: Output DataFrame name
-      
-      # For PySpark transformations (transformation_type: "pyspark")
-      pyspark:
-        source_code: string      # PySpark code as string
-        entry_point: string      # Function name to execute
-        spark_config: dict      # Optional: Spark-specific configuration
-        source_tables: [string]  # Optional: Input table names
-      
-      # For R transformations (transformation_type: "r")
-      r:
-        source_code: string      # R code as string
-        entry_point: string      # Function name to execute
-        dependencies: [string]   # Optional: Required R packages
-        source_tables: [string] # Optional: Input table names
-      
-      # For API-based transformations (transformation_type: "api")
-      api:
-        endpoint: string         # API endpoint URL
-        method: string          # HTTP method ("GET", "POST", etc.)
-        request_body: dict       # Optional: Request body
-        response_format: string  # Response format ("json", "csv", etc.)
-        source_tables: [string]  # Optional: Input tables (if any)
+      # Note: Non-SQL transformation types (python, pyspark, r) are planned for future versions
     
     # Schema definition
     schema:
@@ -199,7 +166,8 @@ transformations:                 # Array of transformation definitions
     metadata:
       file_path: string          # Path to the source transformation file
       owner: string              # Optional: Person or team responsible (optional)
-      tags: [string]             # Optional: Keywords for categorization (optional)
+      tags: [string]             # Optional: List of string tags for categorization and discovery (e.g., ["analytics", "fct"])
+      object_tags: dict          # Optional: Dictionary of key-value pairs for database object tagging (e.g., {"sensitivity_tag": "pii", "classification": "public"})
 ```
 
 ## Simple Table Transformation
@@ -226,7 +194,6 @@ transformations:                 # Array of transformation definitions
         "sql": {
           "original_sql": "SELECT id, name, email, created_at FROM source.customers WHERE active = true",
           "resolved_sql": "SELECT id, name, email, created_at FROM warehouse.source.customers WHERE active = true",
-          "operation_type": "select",
           "source_tables": ["source.customers"]
         }
       },
@@ -309,7 +276,6 @@ transformations:
       sql:
         original_sql: "SELECT id, name, email, created_at FROM source.customers WHERE active = true"
         resolved_sql: "SELECT id, name, email, created_at FROM warehouse.source.customers WHERE active = true"
-        operation_type: "select"
         source_tables: ["source.customers"]
     
     schema:
@@ -452,7 +418,6 @@ code:
   sql:
     original_sql: "SELECT order_id, customer_id, order_date, amount, status FROM source.orders WHERE updated_at >= '@start_date'"
     resolved_sql: "SELECT order_id, customer_id, order_date, amount, status FROM warehouse.source.orders WHERE updated_at >= '@start_date'"
-    operation_type: "select"
     source_tables: ["source.orders"]
 
 schema:
@@ -512,7 +477,6 @@ tests:
     "sql": {
       "original_sql": "SELECT order_id, customer_id, order_date, amount, status FROM source.orders WHERE updated_at >= '@start_date'",
       "resolved_sql": "SELECT order_id, customer_id, order_date, amount, status FROM warehouse.source.orders WHERE updated_at >= '@start_date'",
-      "operation_type": "select",
       "source_tables": ["source.orders"]
     }
   },
@@ -596,7 +560,6 @@ code:
   sql:
     original_sql: "SELECT event_id, timestamp, user_id, event_type, payload FROM source.events WHERE timestamp >= '@start_date'"
     resolved_sql: "SELECT event_id, timestamp, user_id, event_type, payload FROM warehouse.source.events WHERE timestamp >= '@start_date'"
-    operation_type: "select"
     source_tables: ["source.events"]
 
 schema:
@@ -657,7 +620,6 @@ metadata:
     "sql": {
       "original_sql": "SELECT event_id, timestamp, user_id, event_type, payload FROM source.events WHERE timestamp >= '@start_date'",
       "resolved_sql": "SELECT event_id, timestamp, user_id, event_type, payload FROM warehouse.source.events WHERE timestamp >= '@start_date'",
-      "operation_type": "select",
       "source_tables": ["source.events"]
     }
   },
@@ -744,7 +706,6 @@ code:
   sql:
     original_sql: "SELECT customer_id, name, email, phone, updated_at FROM source.customers WHERE updated_at >= '@start_date'"
     resolved_sql: "SELECT customer_id, name, email, phone, updated_at FROM warehouse.source.customers WHERE updated_at >= '@start_date'"
-    operation_type: "select"
     source_tables: ["source.customers"]
 
 schema:
@@ -807,7 +768,6 @@ tests:
     "sql": {
       "original_sql": "SELECT customer_id, name, email, phone, updated_at FROM source.customers WHERE updated_at >= '@start_date'",
       "resolved_sql": "SELECT customer_id, name, email, phone, updated_at FROM warehouse.source.customers WHERE updated_at >= '@start_date'",
-      "operation_type": "select",
       "source_tables": ["source.customers"]
     }
   },
@@ -896,7 +856,6 @@ code:
   sql:
     original_sql: "SELECT product_id, product_name, price, category, updated_at FROM source.products WHERE updated_at >= '@start_date'"
     resolved_sql: "SELECT product_id, product_name, price, category, updated_at FROM warehouse.source.products WHERE updated_at >= '@start_date'"
-    operation_type: "select"
     source_tables: ["source.products"]
 
 schema:
@@ -964,7 +923,6 @@ tests:
     "sql": {
       "original_sql": "SELECT product_id, product_name, price, category, updated_at FROM source.products WHERE updated_at >= '@start_date'",
       "resolved_sql": "SELECT product_id, product_name, price, category, updated_at FROM warehouse.source.products WHERE updated_at >= '@start_date'",
-      "operation_type": "select",
       "source_tables": ["source.products"]
     }
   },
