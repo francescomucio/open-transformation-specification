@@ -6,7 +6,8 @@
 2. [Core Concepts](#core-concepts)
 3. [Open Transformation Definition (OTD) Structure](#open-transformation-definition-otd-structure)
 4. [Materialization Types](#materialization-types)
-5. [Examples](#examples)
+5. [Data Quality Tests](#data-quality-tests)
+6. [Examples](#examples)
 
 ## Introduction
 
@@ -37,7 +38,24 @@ Key characteristics of an OTS Module:
 - **Open Transformation Definition (OTD)**: A specific transformation within a module
 - **Open Transformation Specification Module (OTS Module)**: A collection of related transformations targeting the same database and schema
 
-Think of it this way: OTS is like the blueprint, an OTS Module is the house (a complete set of transformations), and each OTD is a room within that house (an individual transformation).
+### Test Library
+
+A **Test Library** is a project-level collection of reusable test definitions (generic and singular SQL tests) that can be shared across multiple OTS modules. Test libraries are defined separately from transformation modules and are referenced by modules that need to use them.
+
+Key characteristics of a Test Library:
+- **Project-level scope**: Test libraries are defined at the project/workspace level, separate from OTS modules
+- **Reusability**: Tests defined in a library can be referenced by any OTS module in the project
+- **Test types**: Contains both generic SQL tests (with placeholders) and singular SQL tests (table-specific)
+- **Optional**: Modules can define tests inline or reference a test library, or both
+
+#### OTS vs OTD vs OTS Module vs Test Library
+
+- **Open Transformation Specification (OTS)**: The standard that defines the structure and rules
+- **Open Transformation Definition (OTD)**: A specific transformation within a module
+- **Open Transformation Specification Module (OTS Module)**: A collection of related transformations targeting the same database and schema
+- **Test Library**: A project-level collection of reusable test definitions that can be shared across modules
+
+Think of it this way: OTS is like the blueprint, an OTS Module is the house (a complete set of transformations), each OTD is a room within that house (an individual transformation), and a Test Library is like a shared toolbox of quality checks that can be used across multiple houses.
 
 ## Components of an OTD
 
@@ -82,9 +100,16 @@ Materialization defines how the transformation output is stored and updated. Com
 ### Tests
 Tests are validation rules that ensure data quality. They can be defined at two levels:
 - **Column-level tests**: Applied to individual columns (e.g., `not_null`, `unique`)
-- **Table-level tests**: Applied to the entire output (e.g., `row_count_gt_0`, `no_duplicates`)
+- **Table-level tests**: Applied to the entire output (e.g., `row_count_gt_0`, `unique`)
 
-Tests enable automated data quality validation without manual inspection.
+Tests enable automated data quality validation without manual inspection. OTS supports three types of tests:
+1. **Standard Tests**: Built-in tests defined in the OTS specification (e.g., `not_null`, `unique`, `row_count_gt_0`)
+2. **Generic SQL Tests**: Reusable SQL tests with placeholders that can be applied to multiple transformations
+3. **Singular SQL Tests**: Table-specific SQL tests with hardcoded table references
+
+Generic SQL Tests and Singular SQL Tests can be defined in a project Test Library (see [Test Library](#test-library)) or inline within the current OTS Module.
+
+For detailed information about test types, definitions, and usage, see the [Data Quality Tests](#data-quality-tests) section.
 
 ### Metadata
 Metadata provides additional information about the transformation including:
@@ -114,6 +139,24 @@ module_name: string              # Module name (e.g., "ecommerce_analytics")
 module_description: string       # Description of the module (optional)
 version: string                  # Optional: Module/package version (e.g., "1.0.0") - version of this specific module, independent of OTS version
 tags: [string]                   # Optional: Module-level tags for categorization (e.g., ["analytics", "fct"]). These can be inherited or merged with transformation-level tags.
+test_library_path: string        # Optional: Path to test library file (relative to module file or absolute path)
+
+# Optional: Inline test definitions (same structure as test library)
+generic_tests:                   # Optional: Module-specific generic SQL tests
+  test_name:
+    type: "sql"
+    level: "table" | "column"
+    description: string
+    sql: string
+    parameters: {}
+singular_tests:                  # Optional: Module-specific singular SQL tests
+  test_name:
+    type: "sql"
+    level: "table" | "column"
+    description: string
+    sql: string
+    target_transformation: string
+
 target:
   database: string               # Target database name
   schema: string                 # Target schema name
@@ -165,8 +208,12 @@ transformations:                 # Array of transformation definitions
     # Tests: both column-level and table-level
     tests:
       columns:                   # Optional: Column-level tests
-        column_name: [string]    # Tests for specific columns (e.g., "id": ["not_null", "unique"])
-      table: [string]            # Optional: Table-level tests (e.g., ["row_count_gt_0", "no_duplicates"])
+        column_name:             # Tests for specific columns
+          - string               # Simple test name (e.g., "not_null", "unique")
+          - object               # Test with parameters: {name: string, params?: object, severity?: "error"|"warning"}
+      table:                     # Optional: Table-level tests
+        - string                 # Simple test name (e.g., "row_count_gt_0")
+        - object                 # Test with parameters: {name: string, params?: object, severity?: "error"|"warning"}
     
     # Metadata
     metadata:
@@ -187,6 +234,7 @@ transformations:                 # Array of transformation definitions
   "module_name": "analytics_customers",
   "module_description": "Customer analytics transformations",
   "tags": ["analytics", "production"],
+  "test_library_path": "../tests/test_library.yaml",
   "target": {
     "database": "warehouse",
     "schema": "analytics",
@@ -407,15 +455,404 @@ columns:
 - `array`: Array of values
 - `object`: Complex nested objects
 
-### Test Types
+## Data Quality Tests
 
-**Column-level tests** are applied to specific columns:
-- `not_null`: Field cannot be null
-- `unique`: Field values must be unique
+Data quality tests are validation rules that ensure the correctness and quality of transformation outputs. Tests can be defined at two levels:
+- **Column-level tests**: Applied to individual columns (e.g., `not_null`, `unique`)
+- **Table-level tests**: Applied to the entire output (e.g., `row_count_gt_0`, `unique`)
 
-**Table-level tests** are applied to the entire output:
-- `row_count_gt_0`: Table must have at least one row
-- `no_duplicates`: No duplicate rows allowed
+Tests enable automated data quality validation without manual inspection. OTS supports three types of tests:
+
+1. **Standard Tests**: Built-in tests defined in the OTS specification (e.g., `not_null`, `unique`, `row_count_gt_0`)
+2. **Generic SQL Tests**: Reusable SQL tests with placeholders that can be applied to multiple transformations
+3. **Singular SQL Tests**: Table-specific SQL tests with hardcoded table references
+
+### Standard Tests
+
+Standard tests are built into the OTS specification and must be implemented by all OTS-compliant tools. These tests provide common data quality checks that are widely applicable across different transformations.
+
+#### Column-Level Standard Tests
+
+**`not_null`**
+- **Description**: Ensures a column contains no NULL values
+- **Level**: Column
+- **Parameters**: None
+- **Implementation**: Returns rows where the column is NULL (test fails if any rows returned)
+- **Example**: 
+  ```yaml
+  tests:
+    columns:
+      id: ["not_null"]
+  ```
+
+**`unique`**
+- **Description**: Ensures column values are unique across all rows
+- **Level**: Column or Table
+- **Parameters**: 
+  - `columns` (array, optional): For table-level tests, specifies which columns to check for uniqueness. If omitted at table level, checks all columns (entire row uniqueness)
+- **Implementation**: Returns duplicate values (test fails if any duplicates found)
+- **Examples**: 
+  ```yaml
+  tests:
+    columns:
+      # Column-level: single column uniqueness
+      id: ["not_null", "unique"]
+    
+    table:
+      # Table-level: composite uniqueness on specific columns
+      - name: "unique"
+        params:
+          columns: ["customer_id", "order_date"]
+      
+      # Table-level: entire row uniqueness (all columns)
+      - "unique"
+  ```
+
+**`accepted_values`**
+- **Description**: Ensures column values are within a specified list of acceptable values
+- **Level**: Column
+- **Parameters**:
+  - `values` (array, required): List of acceptable values
+- **Implementation**: Returns rows where column value is not in the accepted list
+- **Example**: 
+  ```yaml
+  tests:
+    columns:
+      status:
+        - name: "accepted_values"
+          params:
+            values: ["active", "inactive", "pending"]
+  ```
+
+**`relationships`**
+- **Description**: Ensures referential integrity between tables (foreign key validation)
+- **Level**: Column
+- **Parameters**:
+  - `to` (string, required): Target transformation ID (e.g., "analytics.customers")
+  - `field` (string, required): Column name in the target transformation
+- **Implementation**: Returns rows where the column value doesn't exist in the target table's specified field
+- **Example**:
+  ```yaml
+  tests:
+    columns:
+      customer_id:
+        - name: "relationships"
+          params:
+            to: "analytics.customers"
+            field: "id"
+  ```
+
+#### Table-Level Standard Tests
+
+**`row_count_gt_0`**
+- **Description**: Ensures the table has at least one row
+- **Level**: Table
+- **Parameters**: None
+- **Implementation**: Returns a count result (test fails if count = 0)
+- **Example**: 
+  ```yaml
+  tests:
+    table:
+      - "row_count_gt_0"
+  ```
+
+### Test Libraries
+
+Test libraries are project-level collections of custom test definitions (generic and singular SQL tests) that can be shared across multiple OTS modules. For a detailed introduction to Test Libraries, see the [Test Library](#test-library) section in Core Concepts.
+
+#### Test Library Structure
+
+A test library is a YAML or JSON file that defines reusable test definitions. The file can be named anything (e.g., `test_library.yaml`, `tests.yaml`, `data_quality_tests.json`), but must follow the structure below.
+
+**Test Library File Structure:**
+```yaml
+# test_library.yaml
+test_library_version: string        # Optional: Version identifier for the test library (e.g., "1.0", "2.1")
+description: string                  # Optional: Human-readable description of the test library
+
+generic_tests:
+  check_minimum_rows:
+    type: "sql"
+    level: "table"
+    description: "Ensures table has minimum number of rows"
+    sql: |
+      SELECT 1 as violation
+      FROM @table_name
+      GROUP BY 1
+      HAVING COUNT(*) < @min_rows:10
+    parameters:
+      min_rows:
+        type: "number"
+        default: 10
+        description: "Minimum number of rows required"
+  
+  column_not_negative:
+    type: "sql"
+    level: "column"
+    description: "Ensures numeric column has no negative values"
+    sql: |
+      SELECT @column_name
+      FROM @table_name
+      WHERE @column_name < 0
+    parameters: []
+
+singular_tests:
+  test_customers_email_format:
+    type: "sql"
+    level: "table"
+    description: "Validates email format for customers table"
+    sql: |
+      SELECT id, email
+      FROM analytics.customers
+      WHERE email NOT LIKE '%@%.%'
+    target_transformation: "analytics.customers"
+```
+
+#### Generic SQL Tests
+
+Generic SQL tests are reusable tests that use placeholders (variables) to make them applicable to multiple transformations. They follow the dbt pattern where:
+- The query returns rows when the test fails
+- 0 rows returned = test passes
+- 1+ rows returned = test fails
+
+**Placeholders:**
+- `@table_name` or `{{ table_name }}`: Replaced with the fully qualified transformation ID. The `@` syntax is recommended for cleaner SQL.
+- `@column_name` or `{{ column_name }}`: Replaced with the column name (for column-level tests). The `@` syntax is recommended.
+- Custom parameters: Available as `@parameter_name` or `{{ parameter_name }}` with optional defaults using `@param:default` syntax (e.g., `@min_rows:10`)
+
+**Structure:**
+```yaml
+generic_tests:
+  test_name:                       # Required: Unique test name (used for referencing)
+    type: "sql"                    # Required: Always "sql" for SQL tests
+    level: "table" | "column"      # Required: Test level
+    description: string            # Optional: Human-readable description
+    sql: string                    # Required: SQL query (returns rows on failure)
+    parameters:                    # Optional: Parameter definitions
+      param_name:
+        type: "number" | "string" | "boolean" | "array"  # Required: Parameter type
+        default: value             # Optional: Default value
+        description: string        # Optional: Parameter description
+```
+
+**Example Generic Test:**
+```yaml
+check_minimum_rows:
+  type: "sql"
+  level: "table"
+  description: "Ensures table has minimum number of rows"
+  sql: |
+    SELECT 1 as violation
+    FROM @table_name
+    GROUP BY 1
+    HAVING COUNT(*) < @min_rows:10
+  parameters:
+    min_rows:
+      type: "number"
+      default: 10
+      description: "Minimum number of rows required"
+```
+
+#### Singular SQL Tests
+
+Singular SQL tests are table-specific tests with hardcoded table references. They are useful for:
+- Complex business logic specific to one transformation
+- Tests that reference multiple tables
+- Table-specific validation rules
+
+**Structure:**
+```yaml
+singular_tests:
+  test_name:                       # Required: Unique test name (used for referencing)
+    type: "sql"                    # Required: Always "sql" for SQL tests
+    level: "table" | "column"      # Required: Test level
+    description: string            # Optional: Human-readable description
+    sql: string                    # Required: SQL query with hardcoded table names
+    target_transformation: string  # Required: Transformation ID this test applies to (used for validation and discovery)
+```
+
+**Example Singular Test:**
+```yaml
+test_customers_email_format:
+  type: "sql"
+  level: "table"
+  description: "Validates email format for customers table"
+  sql: |
+    SELECT id, email
+    FROM analytics.customers
+    WHERE email NOT LIKE '%@%.%'
+  target_transformation: "analytics.customers"
+```
+
+### Referencing Tests in Transformations
+
+Transformations reference tests from:
+1. **Standard tests**: Referenced by name (e.g., `"not_null"`, `"unique"`)
+2. **Test library tests**: Referenced by name from the test library (e.g., `"check_minimum_rows"`)
+
+**Module Structure with Test Library Reference:**
+
+```yaml
+ots_version: "0.1.0"
+module_name: "analytics_customers"
+test_library_path: "../tests/test_library.yaml"  # Optional: Path to test library
+
+target:
+  database: "warehouse"
+  schema: "analytics"
+
+transformations:
+  - transformation_id: "analytics.customers"
+    tests:
+      columns:
+        id: 
+          - "not_null"                           # Standard test
+          - "unique"                             # Standard test (column-level)
+        email:
+          - "not_null"
+          - name: "accepted_values"              # Standard test with params
+            params:
+              values: ["gmail.com", "yahoo.com"]
+        amount:
+          - name: "column_not_negative"           # Generic test from library
+      table:
+        - "row_count_gt_0"                        # Standard test
+        - "unique"                                # Standard test (table-level, checks all columns)
+        - name: "unique"                          # Standard test (table-level, composite on specific columns)
+          params:
+            columns: ["customer_id", "order_date"]
+        - name: "check_minimum_rows"              # Generic test with params
+          params:
+            min_rows: 100
+        - "test_customers_email_format"          # Singular test from library
+```
+
+**Test Reference Formats:**
+
+1. **Simple string** (standard test, no parameters):
+   ```yaml
+   tests:
+     columns:
+       id: ["not_null", "unique"]
+     table:
+       - "row_count_gt_0"
+   ```
+
+2. **Object with name** (standard test with parameters):
+   ```yaml
+   tests:
+     columns:
+       status:
+         - name: "accepted_values"
+           params:
+             values: ["active", "inactive"]
+   ```
+
+3. **Object with name** (generic/singular test from library):
+   ```yaml
+   tests:
+     table:
+       - name: "check_minimum_rows"
+         params:
+           min_rows: 100
+   ```
+
+### Test Execution Model
+
+Tests follow the dbt execution model:
+- **0 rows returned** = test passes
+- **1+ rows returned** = test fails
+
+For standard tests, tools generate SQL queries that return violating rows. For SQL tests (generic and singular), the SQL query itself returns rows when violations are found.
+
+**Test Severity:**
+- Tests can have a `severity` level: `"error"` (default) or `"warning"`
+- `error`: Test failure stops execution and fails the build
+- `warning`: Test failure is logged but doesn't stop execution
+
+**Severity in Test References:**
+```yaml
+tests:
+  columns:
+    id:
+      - name: "not_null"
+        severity: "error"        # Default, can be omitted
+      - name: "unique"
+        severity: "warning"      # Non-blocking
+  table:
+    - name: "row_count_gt_0"
+      severity: "error"          # Default, can be omitted
+```
+
+### Inline Test Definitions in OTS Modules
+
+Generic and singular SQL tests can also be defined directly within an OTS Module, using the same structure as test libraries. This is useful for module-specific tests that don't need to be shared across modules.
+
+**Module Structure with Inline Tests:**
+```yaml
+ots_version: "0.1.0"
+module_name: "analytics_customers"
+
+# Optional: Inline test definitions (same structure as test library)
+generic_tests:
+  check_recent_data:
+    type: "sql"
+    level: "table"
+    description: "Ensures table has recent data"
+    sql: |
+      SELECT 1 as violation
+      FROM @table_name
+      WHERE updated_at < CURRENT_DATE - INTERVAL '@days:7' DAY
+    parameters:
+      days:
+        type: "number"
+        default: 7
+
+singular_tests:
+  test_customers_specific:
+    type: "sql"
+    level: "table"
+    description: "Module-specific test"
+    sql: |
+      SELECT id FROM analytics.customers WHERE status = 'invalid'
+    target_transformation: "analytics.customers"
+
+target:
+  database: "warehouse"
+  schema: "analytics"
+
+transformations:
+  - transformation_id: "analytics.customers"
+    tests:
+      table:
+        - name: "check_recent_data"      # References inline generic test
+          params:
+            days: 3
+        - "test_customers_specific"      # References inline singular test
+```
+
+**Test Resolution Priority:**
+When resolving test names, tools should check in the following order:
+1. **Standard tests** (built into OTS specification)
+2. **Inline tests** (defined in the current OTS Module)
+3. **Test library tests** (from referenced test library)
+
+If a test name exists in multiple locations, the first match takes precedence. This allows modules to override test library tests with module-specific implementations.
+
+### Test Library Resolution
+
+When a transformation module references a test library:
+1. The tool resolves the `test_library_path` (relative to the module file or absolute path)
+2. Loads the test library file (YAML or JSON format)
+3. Validates test definitions
+4. Makes tests available for reference in transformations (after inline tests)
+
+**Test Discovery:**
+- **Standard tests**: Always available, no discovery needed
+- **Generic tests**: Discovered from test library or inline module definitions
+- **Singular tests**: Discovered from test library or inline module definitions. The `target_transformation` field helps tools validate that the test is applied to the correct transformation.
+
+If a test is referenced but not found among the Standard tests, inline tests, or Test library, it must result in an error.
 
 ## Complete Examples: Incremental Strategies
 
@@ -760,7 +1197,7 @@ tests:
   columns:
     customer_id: ["not_null", "unique"]
     email: ["not_null"]
-  table: ["row_count_gt_0", "no_duplicates"]
+  table: ["row_count_gt_0", "unique"]  # unique at table level checks all columns for row uniqueness
 
   metadata:
   file_path: "/models/product/master_data.sql"
@@ -844,7 +1281,7 @@ tests:
       "customer_id": ["not_null", "unique"],
       "email": ["not_null"]
     },
-    "table": ["row_count_gt_0", "no_duplicates"]
+    "table": ["row_count_gt_0", "unique"]
   },
   
   "metadata": {
@@ -1016,6 +1453,305 @@ tests:
     "owner": "data-engineering",
     "tags": ["products", "scd2", "dimension"]
   }
+}
+```
+
+</details>
+
+## Complete Example: Test Library and Module
+
+This example demonstrates a complete setup with a test library and a transformation module that uses both standard and custom tests.
+
+### Test Library Example
+
+<details>
+<summary><strong>YAML Format</strong></summary>
+
+```yaml
+# tests/test_library.yaml
+test_library_version: "1.0"
+description: "Shared data quality tests for analytics project"
+
+generic_tests:
+  check_minimum_rows:
+    type: "sql"
+    level: "table"
+    description: "Ensures table has minimum number of rows"
+    sql: |
+      SELECT 1 as violation
+      FROM @table_name
+      GROUP BY 1
+      HAVING COUNT(*) < @min_rows:10
+    parameters:
+      min_rows:
+        type: "number"
+        default: 10
+        description: "Minimum number of rows required"
+  
+  column_not_negative:
+    type: "sql"
+    level: "column"
+    description: "Ensures numeric column has no negative values"
+    sql: |
+      SELECT @column_name
+      FROM @table_name
+      WHERE @column_name < 0
+    parameters: []
+
+singular_tests:
+  test_customers_email_format:
+    type: "sql"
+    level: "table"
+    description: "Validates email format for customers table"
+    sql: |
+      SELECT id, email
+      FROM analytics.customers
+      WHERE email NOT LIKE '%@%.%'
+    target_transformation: "analytics.customers"
+```
+
+</details>
+
+<details>
+<summary><strong>JSON Format</strong></summary>
+
+```json
+{
+  "test_library_version": "1.0",
+  "description": "Shared data quality tests for analytics project",
+  "generic_tests": {
+    "check_minimum_rows": {
+      "type": "sql",
+      "level": "table",
+      "description": "Ensures table has minimum number of rows",
+      "sql": "SELECT 1 as violation\nFROM @table_name\nGROUP BY 1\nHAVING COUNT(*) < @min_rows:10",
+      "parameters": {
+        "min_rows": {
+          "type": "number",
+          "default": 10,
+          "description": "Minimum number of rows required"
+        }
+      }
+    },
+    "column_not_negative": {
+      "type": "sql",
+      "level": "column",
+      "description": "Ensures numeric column has no negative values",
+      "sql": "SELECT @column_name\nFROM @table_name\nWHERE @column_name < 0",
+      "parameters": []
+    }
+  },
+  "singular_tests": {
+    "test_customers_email_format": {
+      "type": "sql",
+      "level": "table",
+      "description": "Validates email format for customers table",
+      "sql": "SELECT id, email\nFROM analytics.customers\nWHERE email NOT LIKE '%@%.%'",
+      "target_transformation": "analytics.customers"
+    }
+  }
+}
+```
+
+</details>
+
+### Module Using Test Library
+
+<details>
+<summary><strong>YAML Format</strong></summary>
+
+```yaml
+ots_version: "0.1.0"
+module_name: "analytics_customers"
+module_description: "Customer analytics transformations"
+test_library_path: "../tests/test_library.yaml"
+tags: ["analytics", "production"]
+
+target:
+  database: "warehouse"
+  schema: "analytics"
+  sql_dialect: "postgres"
+
+transformations:
+  - transformation_id: "analytics.customers"
+    description: "Customer data table"
+    transformation_type: "sql"
+    
+    code:
+      sql:
+        original_sql: "SELECT id, name, email, created_at, amount FROM source.customers WHERE active = true"
+        resolved_sql: "SELECT id, name, email, created_at, amount FROM warehouse.source.customers WHERE active = true"
+        source_tables: ["source.customers"]
+    
+    schema:
+      columns:
+        - name: "id"
+          datatype: "number"
+          description: "Unique customer identifier"
+        - name: "name"
+          datatype: "string"
+          description: "Customer name"
+        - name: "email"
+          datatype: "string"
+          description: "Customer email address"
+        - name: "created_at"
+          datatype: "date"
+          description: "Customer creation date"
+        - name: "amount"
+          datatype: "number"
+          description: "Customer account balance"
+      partitioning: []
+      indexes:
+        - name: "idx_customers_id"
+          columns: ["id"]
+        - name: "idx_customers_email"
+          columns: ["email"]
+    
+    materialization:
+      type: "table"
+    
+    tests:
+      columns:
+        id: 
+          - "not_null"                              # Standard test
+          - "unique"                                 # Standard test (column-level)
+        email:
+          - "not_null"
+          - name: "accepted_values"                 # Standard test with params
+            params:
+              values: ["gmail.com", "yahoo.com", "company.com"]
+        amount:
+          - name: "column_not_negative"               # Generic test from library
+      table:
+        - "row_count_gt_0"                          # Standard test
+        - "unique"                                   # Standard test (table-level, checks all columns for row uniqueness)
+        - name: "check_minimum_rows"                 # Generic test with params
+          params:
+            min_rows: 100
+        - "test_customers_email_format"             # Singular test from library
+    
+    metadata:
+      file_path: "/models/analytics/customers.sql"
+      owner: "data-team"
+      tags: ["customer", "core"]
+      object_tags:
+        sensitivity_tag: "pii"
+        classification: "internal"
+```
+
+</details>
+
+<details>
+<summary><strong>JSON Format</strong></summary>
+
+```json
+{
+  "ots_version": "0.1.0",
+  "module_name": "analytics_customers",
+  "module_description": "Customer analytics transformations",
+  "test_library_path": "../tests/test_library.yaml",
+  "tags": ["analytics", "production"],
+  "target": {
+    "database": "warehouse",
+    "schema": "analytics",
+    "sql_dialect": "postgres"
+  },
+  "transformations": [
+    {
+      "transformation_id": "analytics.customers",
+      "description": "Customer data table",
+      "transformation_type": "sql",
+      "code": {
+        "sql": {
+          "original_sql": "SELECT id, name, email, created_at, amount FROM source.customers WHERE active = true",
+          "resolved_sql": "SELECT id, name, email, created_at, amount FROM warehouse.source.customers WHERE active = true",
+          "source_tables": ["source.customers"]
+        }
+      },
+      "schema": {
+        "columns": [
+          {
+            "name": "id",
+            "datatype": "number",
+            "description": "Unique customer identifier"
+          },
+          {
+            "name": "name",
+            "datatype": "string",
+            "description": "Customer name"
+          },
+          {
+            "name": "email",
+            "datatype": "string",
+            "description": "Customer email address"
+          },
+          {
+            "name": "created_at",
+            "datatype": "date",
+            "description": "Customer creation date"
+          },
+          {
+            "name": "amount",
+            "datatype": "number",
+            "description": "Customer account balance"
+          }
+        ],
+        "partitioning": [],
+        "indexes": [
+          {
+            "name": "idx_customers_id",
+            "columns": ["id"]
+          },
+          {
+            "name": "idx_customers_email",
+            "columns": ["email"]
+          }
+        ]
+      },
+      "materialization": {
+        "type": "table"
+      },
+      "tests": {
+        "columns": {
+          "id": ["not_null", "unique"],
+          "email": [
+            "not_null",
+            {
+              "name": "accepted_values",
+              "params": {
+                "values": ["gmail.com", "yahoo.com", "company.com"]
+              }
+            }
+          ],
+          "amount": [
+            {
+              "name": "column_not_negative"
+            }
+          ]
+        },
+        "table": [
+          "row_count_gt_0",
+          "unique",
+          {
+            "name": "check_minimum_rows",
+            "params": {
+              "min_rows": 100
+            }
+          },
+          "test_customers_email_format"
+        ]
+      },
+      "metadata": {
+        "file_path": "/models/analytics/customers.sql",
+        "owner": "data-team",
+        "tags": ["customer", "core"],
+        "object_tags": {
+          "sensitivity_tag": "pii",
+          "classification": "internal"
+        }
+      }
+    }
+  ]
 }
 ```
 
