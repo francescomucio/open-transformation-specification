@@ -10,7 +10,8 @@ This specification allows both humans and computers to discover and understand t
 
 This repository contains the Markdown sources for all published Open Transformation Specification versions. For release notes and release candidate versions, refer to the [releases page](https://github.com/francescomucio/open-transformation-specification/releases).
 
-- **Current Version**: [v0.1.0](versions/v0.1.0/transformation-specification.md)
+- **Current Version**: [v0.2.0](versions/v0.2.0/transformation-specification.md)
+- **Previous Version**: [v0.1.0](versions/v0.1.0/transformation-specification.md)
 
 ## Tools and Libraries
 
