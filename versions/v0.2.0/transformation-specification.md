@@ -12,51 +12,73 @@
 
 ## Introduction
 
-The Open Transformation Specification (OTS) defines a standard, programming language-agnostic interface description for data transformations. This specification allows both humans and computers to discover and understand how transformations behave, what outputs they produce, and how those outputs are materialized (as tables, views, incremental updates, SCD2, etc.) without requiring additional documentation or configuration.
+The Open Transformation Specification (OTS) defines a standard, programming language-agnostic interface description for data transformations, data quality tests, and user-defined functions (UDFs). This specification allows both humans and computers to discover and understand how transformations behave, what outputs they produce, and how those outputs are materialized (as tables, views, incremental updates, SCD2, etc.) without requiring additional documentation or configuration.
+
+The OTS standard encompasses three types of artifacts: **Open Transformation Definitions (OTDs)** for transformations, **UDF Definitions** for user-defined functions, and **Test Definitions** for data quality tests. Together, these form the complete set of **OTS Artifacts** that can be defined and managed within an OTS Module.
 
 An OTS-based transformation must include both the code that transforms the data and metadata about the transformation. A tool implementing OTS should be able to execute an OTS transformation with no additional code or information beyond what's specified in the OTS document.
 
 ## Core Concepts
 
+### OTS Artifacts
+
+**OTS Artifacts** is the umbrella term for all concrete instances of the Open Transformation Specification. The OTS standard defines three types of artifacts:
+
+1. **Open Transformation Definition (OTD)**: A structured definition that describes a specific data transformation
+2. **UDF Definition**: A structured definition that describes a user-defined function
+3. **Test Definition**: A structured definition that describes a data quality test
+
+All OTS Artifacts follow the OTS format and can be defined within an OTS Module. Together, they form a complete data transformation pipeline with reusable functions and quality validation.
+
 ### Open Transformation Definition (OTD)
 
-An **Open Transformation Definition (OTD)** is a concrete instance of the Open Transformation Specification - a single file or document that describes a specific data transformation using the OTS format. 
+An **Open Transformation Definition (OTD)** is a concrete instance of the Open Transformation Specification that describes a specific data transformation using the OTS format. An OTD exists as a structured definition within an OTS Module, which is the file or document that contains one or more transformation definitions.
 
 A transformation is a unit of data processing that takes one or more data sources as input and produces one data output. Right now, transformations are SQL queries, but we plan to add support for other programming languages in the future.
 
 ### Open Transformation Specification Module
 
-An **Open Transformation Specification Module (OTS Module)** is a collection of related transformations that target the same database and schema. An OTS Module can contain one or more transformations, much like how an OpenAPI specification can contain multiple endpoints.
+An **Open Transformation Specification Module (OTS Module)** is a collection of related OTS Artifacts (transformations, UDFs, and tests) that target the same database and schema. An OTS Module can contain one or more transformations, UDF definitions, and test definitions, much like how an OpenAPI specification can contain multiple endpoints.
 
 Key characteristics of an OTS Module:
 - **Single target**: All transformations in a module target the same database and schema
 - **Logical grouping**: Related transformations are organized together
 - **Deployment unit**: The entire module can be deployed as a single unit
 
-#### OTS vs OTD vs OTS Module
-
-- **Open Transformation Specification (OTS)**: The standard that defines the structure and rules
-- **Open Transformation Definition (OTD)**: A specific transformation within a module
-- **Open Transformation Specification Module (OTS Module)**: A collection of related transformations targeting the same database and schema
-
 ### Test Library
 
-A **Test Library** is a project-level collection of reusable test definitions (generic and singular SQL tests) that can be shared across multiple OTS modules. Test libraries are defined separately from transformation modules and are referenced by modules that need to use them.
+A **Test Library** is a project-level collection of reusable Test Definitions (generic and singular SQL tests) that can be shared across multiple OTS modules. Test libraries are defined separately from transformation modules and are referenced by modules that need to use them.
 
 Key characteristics of a Test Library:
 - **Project-level scope**: Test libraries are defined at the project/workspace level, separate from OTS modules
-- **Reusability**: Tests defined in a library can be referenced by any OTS module in the project
+- **Reusability**: Test Definitions in a library can be referenced by any OTS module in the project
 - **Test types**: Contains both generic SQL tests (with placeholders) and singular SQL tests (table-specific)
 - **Optional**: Modules can define tests inline or reference a test library, or both
 
-#### OTS vs OTD vs OTS Module vs Test Library
+### UDF Definition
+
+A **UDF Definition** is a concrete instance of the Open Transformation Specification that describes a user-defined function using the OTS format. A UDF Definition exists as a structured definition within an OTS Module, defining a custom function that can be called within SQL transformations.
+
+UDF Definitions include the function's signature (parameters and return type), implementation code, dependencies, and metadata. They enable reusable business logic and calculations that can be shared across multiple transformations.
+
+### Test Definition
+
+A **Test Definition** is a concrete instance of the Open Transformation Specification that describes a data quality test using the OTS format. Test Definitions can exist in two contexts:
+
+1. **Within a Test Library**: Reusable test definitions (generic and singular SQL tests) that can be shared across multiple OTS modules
+2. **Inline within an OTS Module**: Module-specific test definitions that are defined directly in the transformation module
+
+Test Definitions include the test logic (SQL queries for generic/singular tests, or test type for standard tests), parameters, target scope (table or column level), and metadata. They enable automated data quality validation without manual inspection.
+
+#### OTS vs OTD vs OTS Module vs Test Library vs OTS Artifacts
 
 - **Open Transformation Specification (OTS)**: The standard that defines the structure and rules
+- **OTS Artifacts**: The umbrella term for all concrete instances of OTS (OTDs, UDF Definitions, and Test Definitions)
 - **Open Transformation Definition (OTD)**: A specific transformation within a module
-- **Open Transformation Specification Module (OTS Module)**: A collection of related transformations targeting the same database and schema
-- **Test Library**: A project-level collection of reusable test definitions that can be shared across modules
-
-Think of it this way: OTS is like the blueprint, an OTS Module is the house (a complete set of transformations), each OTD is a room within that house (an individual transformation), and a Test Library is like a shared toolbox of quality checks that can be used across multiple houses.
+- **UDF Definition**: A specific user-defined function within a module
+- **Test Definition**: A specific data quality test (in a Test Library or inline in a module)
+- **Open Transformation Specification Module (OTS Module)**: A collection of related OTS Artifacts targeting the same database and schema
+- **Test Library**: A project-level collection of reusable Test Definitions that can be shared across modules
 
 ## Components of an OTD
 
@@ -129,7 +151,7 @@ Metadata provides additional information about the transformation including:
 
 ## OTS Module Structure
 
-An OTS Module is a YAML or JSON document that can contain one or more transformations. Below is the complete structure:
+An OTS Module is a YAML or JSON document that can contain one or more OTS Artifacts (transformations, UDF Definitions, and Test Definitions). Below is the complete structure:
 
 ### Complete OTS Module Structure
 
@@ -589,11 +611,11 @@ Standard tests are built into the OTS specification and must be implemented by a
 
 ### Test Libraries
 
-Test libraries are project-level collections of custom test definitions (generic and singular SQL tests) that can be shared across multiple OTS modules. For a detailed introduction to Test Libraries, see the [Test Library](#test-library) section in Core Concepts.
+Test libraries are project-level collections of reusable Test Definitions (generic and singular SQL tests) that can be shared across multiple OTS modules. For a detailed introduction to Test Libraries, see the [Test Library](#test-library) section in Core Concepts.
 
 #### Test Library Structure
 
-A test library is a YAML or JSON file that defines reusable test definitions. The file can be named anything (e.g., `test_library.yaml`, `tests.yaml`, `data_quality_tests.json`), but must follow the structure below.
+A test library is a YAML or JSON file that contains reusable Test Definitions. The file can be named anything (e.g., `test_library.yaml`, `tests.yaml`, `data_quality_tests.json`), but must follow the structure below.
 
 **Test Library File Structure:**
 ```yaml
@@ -818,7 +840,7 @@ tests:
 
 ### Inline Test Definitions in OTS Modules
 
-Generic and singular SQL tests can also be defined directly within an OTS Module, using the same structure as test libraries. This is useful for module-specific tests that don't need to be shared across modules.
+Test Definitions (generic and singular SQL tests) can also be defined directly within an OTS Module, using the same structure as test libraries. This is useful for module-specific Test Definitions that don't need to be shared across modules.
 
 **Module Structure with Inline Tests:**
 ```yaml
@@ -890,7 +912,7 @@ If a test is referenced but not found among the Standard tests, inline tests, or
 
 ### Overview
 
-User-Defined Functions (UDFs) are custom functions that can be called within SQL transformations. OTS v0.2.0 adds support for tracking UDF dependencies in transformations, enabling proper dependency graph building and execution order determination.
+User-Defined Functions (UDFs) are custom functions that can be called within SQL transformations. OTS v0.2.0 adds support for defining UDFs as **UDF Definitions** within OTS Modules and tracking UDF dependencies in transformations, enabling proper dependency graph building and execution order determination.
 
 ### Function Dependencies
 
@@ -980,7 +1002,7 @@ Tools implementing OTS should handle function overloading according to the targe
 
 ### Example: OTS Module with Functions
 
-The following example shows a complete OTS Module that includes both transformations and function definitions:
+The following example shows a complete OTS Module that includes both transformations and UDF Definitions:
 
 ```yaml
 ots_version: "0.2.0"

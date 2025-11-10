@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-The Open Transformation Specification (OTS) is a community-driven open specification that defines a standard, programming language-agnostic interface description for data transformation pipelines and workflows.
+The Open Transformation Specification (OTS) is a community-driven open specification that defines a standard, programming language-agnostic interface description for data transformation pipelines and workflows, including transformations, data quality tests, and user-defined functions (UDFs).
 
 This specification allows both humans and computers to discover and understand the capabilities of data transformations without requiring access to source code, additional documentation, or inspection of execution logs. When properly defined via OTS, a consumer can understand and interact with data transformation pipelines with a minimal amount of implementation logic.
 
