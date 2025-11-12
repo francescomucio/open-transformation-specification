@@ -12,11 +12,13 @@
 
 ## Introduction
 
-The Open Transformation Specification (OTS) defines a standard, programming language-agnostic interface description for data transformations, data quality tests, and user-defined functions (UDFs). This specification allows both humans and computers to discover and understand how transformations behave, what outputs they produce, and how those outputs are materialized (as tables, views, incremental updates, SCD2, etc.) without requiring additional documentation or configuration.
+The Open Transformation Specification (OTS) defines a standard, programming language-agnostic interface description for data transformations, data quality tests, and user-defined functions (UDFs). This specification enables **interoperability** between tools and platforms, shifting the data transformation ecosystem from isolated, proprietary tools to an **open core** where tools can seamlessly work together around a shared specification.
+
+This specification allows both humans and computers to discover and understand how transformations behave, what outputs they produce, and how those outputs are materialized (as tables, views, incremental updates, SCD2, etc.) without requiring additional documentation or configuration. By providing a common standard, OTS ensures that transformations defined in one tool can be consumed, understood, and executed by any OTS-compliant tool.
 
 The OTS standard encompasses three types of artifacts: **Open Transformation Definitions (OTDs)** for transformations, **UDF Definitions** for user-defined functions, and **Test Definitions** for data quality tests. Together, these form the complete set of **OTS Artifacts** that can be defined and managed within an OTS Module.
 
-An OTS-based transformation must include both the code that transforms the data and metadata about the transformation. A tool implementing OTS should be able to execute an OTS transformation with no additional code or information beyond what's specified in the OTS document.
+An OTS-based transformation must include both the code that transforms the data and metadata about the transformation. A tool implementing OTS should be able to execute an OTS transformation with no additional code or information beyond what's specified in the OTS document. This **interoperability** ensures that the transformation ecosystem can grow organically, with tools building on each other's capabilities rather than creating isolated silos.
 
 ## Core Concepts
 
