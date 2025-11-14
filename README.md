@@ -38,7 +38,9 @@ The OTS ecosystem is growing with tools and libraries that implement the specifi
 
 The current process for developing the Open Transformation Specification is described in the [Contributing Guidelines](CONTRIBUTING.md).
 
+## Community
 
+Join our community on Discord to discuss the specification, ask questions, share ideas, and connect with other contributors: [Discord Community](https://discord.gg/gKm6KgACY7)
 
 ## Licensing
 
